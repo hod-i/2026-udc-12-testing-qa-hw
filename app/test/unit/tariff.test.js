@@ -50,10 +50,12 @@ test("subscription on a long e-bike ride", () => {
   assert.ok(result.total < result.timeCharge);
 });
 
+// T5 (docs/spec/tariffs.md:86-87): 50 % off the time charge only, not the fee — 5 000 − 50 % = 2 500,
+// plus the full T7 fee 15 000 (:112) → 17 500.
 test("reduced fare for a ride returned outside the zone", () => {
   const result = quote(ride("2026-09-16T07:00:00Z", "2026-09-16T07:40:00Z", { returnStation: "X01" }), { type: "reduced" });
-  assert.equal(result.total, 10000);
-  assert.equal(result.fees[0].amount, 7500);
+  assert.equal(result.total, 17500);
+  assert.equal(result.fees[0].amount, 15000);
 });
 
 test("night rides get 30 % off", () => {
