@@ -163,41 +163,34 @@ test("the ledger books what the rider actually paid for time", () => {
 });
 
 // ---- §4: invalid input ----
+// §4 (docs/spec/tariffs.md:147-149) requires only that the request is rejected *with an
+// explanation*; the wording of the explanation is not specified, so tests do not pin it.
+const rejectedWithExplanation = (err) =>
+  err instanceof QuoteError && typeof err.message === "string" && err.message.trim().length > 0;
 
 test("a missing ride is rejected with an explanation", () => {
-  assert.throws(() => quote(null, standard), { name: "QuoteError", message: /ride is required/ });
-  assert.throws(() => quote(undefined, standard), { name: "QuoteError", message: /ride is required/ });
-  assert.throws(() => quote("2026-09-16T07:00:00Z", standard), { name: "QuoteError", message: /ride is required/ });
+  assert.throws(() => quote(null, standard), rejectedWithExplanation);
+  assert.throws(() => quote(undefined, standard), rejectedWithExplanation);
+  assert.throws(() => quote("2026-09-16T07:00:00Z", standard), rejectedWithExplanation);
 });
 
+// API contract (AGENTS.md: ISO 8601 with Z or an offset), not a rule of the specification.
 test("an instant without an offset is rejected", () => {
-  assert.throws(() => quote(ride("2026-09-16T10:00:00", "2026-09-16T10:30:00Z"), standard), {
-    name: "QuoteError",
-    message: /pickupAt must be an ISO 8601 date-time with an offset/,
-  });
-  assert.throws(() => quote(ride("2026-09-16T10:00:00Z", "2026-09-16T10:30:00"), standard), {
-    name: "QuoteError",
-    message: /returnAt must be an ISO 8601 date-time with an offset/,
-  });
+  assert.throws(() => quote(ride("2026-09-16T10:00:00", "2026-09-16T10:30:00Z"), standard), rejectedWithExplanation);
+  assert.throws(() => quote(ride("2026-09-16T10:00:00Z", "2026-09-16T10:30:00"), standard), rejectedWithExplanation);
 });
 
 test("a non-string instant is rejected", () => {
-  assert.throws(() => quote(ride(Date.UTC(2026, 8, 16, 7), "2026-09-16T07:30:00Z"), standard), {
-    name: "QuoteError",
-    message: /pickupAt must be an ISO 8601 date-time with an offset/,
-  });
+  assert.throws(() => quote(ride(Date.UTC(2026, 8, 16, 7), "2026-09-16T07:30:00Z"), standard), rejectedWithExplanation);
 });
 
 test("an impossible date is rejected", () => {
-  assert.throws(() => quote(ride("2026-09-16T07:00:00Z", "2026-13-45T07:30:00Z"), standard), {
-    name: "QuoteError",
-    message: /returnAt is not a valid date-time/,
-  });
+  assert.throws(() => quote(ride("2026-09-16T07:00:00Z", "2026-13-45T07:30:00Z"), standard), rejectedWithExplanation);
 });
 
 test("a daily cap ledger requires a rider id", () => {
-  assert.throws(() => quote(ride("2026-09-16T07:00:00Z", "2026-09-16T07:30:00Z"), standard, { dayCap: createDayCap() }), {
-    name: "QuoteError",
-    message: /rider\.id is required/,
-  });
+  assert.throws(
+    () => quote(ride("2026-09-16T07:00:00Z", "2026-09-16T07:30:00Z"), standard, { dayCap: createDayCap() }),
+    rejectedWithExplanation,
+  );
 });

@@ -105,14 +105,28 @@ AI знайшов і те, чого в нашому списку не було:
 | 5 | `day-cap.test.js` › `charges recorded …` — очікування `DAY_CAP - 12000` | `c-strengthen.diff:10` | дрібна проблема: очікування знову з константи коду; пом'якшено новим тестом `the cap is 30 000 kopecks` (`:23-26`, `:101`). Краще число 18 000 |
 | 6 | `tariff.test.js` › 5 нових тестів §4 — перевіряють **тексти** помилок | `c-strengthen.diff:260`: `message: /ride is required/`, `:268`, `:272`, `:279`, `:286`, `:293` | проблема: специфікація вимагає лише «відхилити з поясненням» (`:147-149`); тексти — з коду. Перефразоване повідомлення зламає тест, хоча поведінка правильна. Саме це в Task A ми записали як «вигадане AI» (`docs/test-cases.md`, «Що AI вигадав», рядок A1 · E04, L02…). Агент написав, що «очікувані значення взяті зі специфікації» (`c-strengthen.md`) — для цих тестів це неправда |
 | 7 | `tariff.test.js` › `an instant without an offset is rejected`, `a non-string instant …`, `an impossible date …`, `a daily cap ledger requires a rider id`; `day-cap.test.js` › `a custom limit replaces the default cap` | `c-strengthen.diff:265-295`, `:59-64` | у специфікації цього немає (§4 перелічує чотири випадки, `:147-149`); це контракт API (`AGENTS.md`: ISO 8601 з `Z` або зсувом) і можливості коду. Залишаємо як тести API, але не «зі специфікації» |
-| 8 | `tariff.test.js` › `a false start at night has no night discount line`, `a free subscriber ride at night has only the subscription line`, `a free ride after the cap is used up has no day-cap line` | `c-strengthen.diff:203-232` | специфікація не каже, чи показувати рядок знижки з сумою 0 (`:133-135`: «окремий рядок для кожної знижки й ліміту»). Тести фіксують поведінку коду, щоб убити M018 / M023. Це прогалина в специфікації (кандидат у Q-8), а не правило. Тест «рівно 30 000 → немає рядка ліміту» — інший випадок: він спирається на «не перевищує» (`:100-101`) і TC-36 |
+| 8 | `tariff.test.js` › `a false start at night has no night discount line`, `a free subscriber ride at night has only the subscription line`, `a free ride after the cap is used up has no day-cap line` | `c-strengthen.diff:203-232` | специфікація не каже, чи показувати рядок знижки з сумою 0 (`:133-135`: «окремий рядок для кожної знижки й ліміту»). Тести фіксують поведінку коду, щоб убити M018 / M023. Це прогалина в специфікації (Q-8 у `docs/test-cases.md`), а не правило. Тест «рівно 30 000 → немає рядка ліміту» — інший випадок: він спирається на «не перевищує» (`:100-101`) і TC-36 |
 | 9 | `tariff.test.js` › `quote returns an itemised price` — цикл лишився | `c-strengthen.diff:104-105` | дрібна проблема: перевірка тепер точна (`deepEqual`), але в циклі без повідомлення досі не видно, яка з трьох поїздок упала (наш запах № 4, частково) |
 
 Неприйнятні зміни: № 6 — див. «Що відкочуємо» нижче.
 
 ### Що відкочуємо і чому
 
-_Заповнюється після рішення._
+- **№ 6 — змінено.** У п'яти тестах §4 (`tariff.test.js` › `a missing ride is rejected with an
+  explanation`, `an instant without an offset is rejected`, `a non-string instant is rejected`,
+  `an impossible date is rejected`, `a daily cap ledger requires a rider id`) перевірку
+  `{ name: "QuoteError", message: /<текст з коду>/ }` замінено на «`QuoteError` з непорожнім
+  поясненням» (`rejectedWithExplanation`). Специфікація вимагає саме цього (`:147-149`) і не
+  задає формулювання; так само перевіряють наші `spec/s4-invalid-input.test.js`. Входи тестів не
+  змінено, тож це не послаблення щодо специфікації: прибрано лише прив'язку до тексту з коду.
+  Перевірка, що мутанти не ожили: `node tools/mutate.mjs --only app/src/tariff.js` → `74 вбито,
+  2 вижило, 97.4 %`, вижили ті самі M016 і M019; M064 і M075 вбиває тип помилки (`QuoteError`
+  проти `TypeError` / відсутності помилки), а не текст. `npm test` — 115 / 115.
+- **№ 7 — лишаємо**, із коментарем у тесті, що це контракт API, а не правило специфікації.
+- **№ 8 — лишаємо**, але це поведінка коду, а не специфікації: записано питання **Q-8** у
+  `docs/test-cases.md` («Питання до специфікації»). Якщо власник продукту вирішить інакше, ці
+  три тести треба буде змінити.
+- **№ 5, № 9 — дрібні**, не відкочуємо.
 
 ## 4. Мутанти, що вижили
 
