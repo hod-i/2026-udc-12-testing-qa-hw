@@ -31,9 +31,12 @@
 **Тест, що червоніє то так, то ні.** `app/test/integration/receipt.test.js` › `every receipt of a
 week of rides ends with the amount due` у `ai-runs/b2-run.txt` зелений, а в іншому прогоні
 `npm test` на тому самому коді (до будь-яких змін) — червоний. Рядка в таблиці немає, бо в
-`b1-run.txt` і `b2-run.txt` він не червоний; ним займаємося в Task D. Гіпотеза (не перевірена):
-тест бере випадкову тривалість (`test/helpers/factory.js`, `between(5, 89)`) і рахує блоки як
-`Math.floor(minutes / 30) + 1`, а для 30 і 60 хв це на блок більше, ніж за `:62`.
+`b1-run.txt` і `b2-run.txt` він не червоний; ним займаємося в Task D. Гіпотеза: тест бере
+випадкову тривалість (`test/helpers/factory.js`, `between(5, 89)`) і рахує блоки як
+`Math.floor(minutes / 30) + 1`, а для 30 і 60 хв це на блок більше, ніж за `:62`. Спостереження,
+що її підтримує (прогін `npm test` після виправлення BUG-2): `classic, 60 min from
+2026-09-21T07:48:00.000Z: got "До сплати .......................... 50,00 грн", expected 75,00 грн`
+— за `:62` 60 хв = 2 блоки = 50,00 грн, тобто тут неправий тест, а не код.
 
 ## Дефекти
 
@@ -41,11 +44,11 @@ week of rides ends with the amount due` у `ai-runs/b2-run.txt` зелений, 
 
 | ID | Правило | Коротко | Знайшов прогін з коду? | Знайшов прогін зі специфікації? | Коміт виправлення |
 |---|---|---|---|---|---|
-| BUG-1 | T1 | тривалість округлюється до найближчої хвилини, а не вгору | ні | так (TC-04, TC-08, TC-46) | <хеш> |
-| BUG-2 | T2 | поїздка рівно 2 хв оплачується як блок | ні | так (TC-05, TC-07) | <хеш> |
-| BUG-3 | T4 | абонент на електровелосипеді отримує 45 безкоштовних хвилин | ні | так (TC-22, TC-23) | <хеш> |
-| BUG-4 | T5 | пільга зменшує збори T7 і T8 удвічі | ні | так (TC-29, TC-30, TC-50) | <хеш> |
-| BUG-5 | T6 | доба денного ліміту рахується за UTC, а не за Києвом | ні | так (TC-39) | <хеш> |
+| BUG-1 | T1 | тривалість округлюється до найближчої хвилини, а не вгору | ні | так (TC-04, TC-08, TC-46) | `2395cfe` |
+| BUG-2 | T2 | поїздка рівно 2 хв оплачується як блок | ні | так (TC-05, TC-07) | `9fe73e3` |
+| BUG-3 | T4 | абонент на електровелосипеді отримує 45 безкоштовних хвилин | ні | так (TC-22, TC-23) | `dc08238` |
+| BUG-4 | T5 | пільга зменшує збори T7 і T8 удвічі | ні | так (TC-29, TC-30, TC-50) | `46b9918` |
+| BUG-5 | T6 | доба денного ліміту рахується за UTC, а не за Києвом | ні | так (TC-39) | `1f144c0` |
 
 Звіт про кожен дефект — у `docs/bugs/BUG-<N>.md`.
 
@@ -54,17 +57,34 @@ week of rides ends with the amount due` у `ai-runs/b2-run.txt` зелений, 
 | Тест (файл › назва) | Що стверджував | Що каже специфікація (рядок) | Що змінили |
 |---|---|---|---|
 | `app/test/unit/tariff.test.js` › `a ride of 30 min 20 s is billed as one block` (після BUG-1) | 30 хв 20 с → 30 хв, 1 блок, 2 500 | `:46-47`: неповна хвилина — вгору → 31 хв → 2 блоки (`:62`) → 5 000 | очікування 31 хв і 5 000, назва → `… is billed as two blocks` |
+| `app/test/unit/tariff.test.js` › `subscribers ride the first 45 minutes free` (після BUG-3; вивід `6400 !== 0`) | абонент, 40 хв → 0 і на класичному, і на електровелосипеді | `:74-77`: 45 безкоштовних хв — лише класичний; електровелосипед — 2 блоки 8 000 − 20 % → 6 400 | очікування за типом: classic 0, ebike 6 400; назва → `… free on a classic bike, an e-bike gets 20 % off` |
+| `app/test/unit/tariff.test.js` › `reduced fare for a ride returned outside the zone` (після BUG-4; вивід `17500 !== 10000`) | пільговий, 40 хв, X01 → `total 10000`, збір `7500` (збір зі знижкою 50 %) | `:86-87`: «Пільга не поширюється на збори (T7, T8)»; 5 000 − 50 % = 2 500 + збір 15 000 (`:112`) → 17 500 | очікування `total 17500`, збір `15000`; назву не змінено |
 
 ## Тести з коду після виправлення (`ai-runs/b1-rerun.txt`)
 
-_Заповнюється на кроці 5, після всіх виправлень._
+`ai-runs/b1-run.txt` (до виправлень): 90 з 90 зелені. `ai-runs/b1-rerun.txt` (після
+`1f144c0`): 11 справжніх червоних тестів — усі 11 нижче були зелені в `b1-run.txt`.
 
 | Тест (файл › назва) | Що стверджував | Який дефект зафіксував |
 |---|---|---|
-| <...> | <...> | <BUG-N> |
+| `ai-runs/b1-from-code/tariff.test.js` › `ride length is rounded to the nearest minute` | 30 хв 29,999 с → 30 хв, 2 500 (вивід після виправлення: `31 !== 30`) | BUG-1 |
+| `ai-runs/b1-from-code/tariff.test.js` › `accepted ISO variants: no seconds, fractional seconds, Z, offset` | 10 хв 0,5 с → 10 хв («10.008 min → 10»; вивід: `11 !== 10`) | BUG-1 |
+| `ai-runs/b1-from-code/tariff.test.js` › `from 2 minutes the first 30-minute block is charged in full` | рівно 2 хв → 2 500 (вивід: `0 !== 2500`) | BUG-2 |
+| `ai-runs/b1-from-code/tariff.test.js` › `e-bike subscription charge gets 20% off` | абонент, електровелосипед, 46 хв → 3 200 (45 хв безкоштовно; вивід: `6400 !== 3200`) | BUG-3 |
+| `ai-runs/b1-from-code/tariff.test.js` › `halves the out-of-zone fee` | пільговий, X02 → збір 7 500 (вивід: `amount: 15000` замість `7500`) | BUG-4 |
+| `ai-runs/b1-from-code/tariff.test.js` › `halves the unreturned-bike fee` | пільговий, 1 441 хв → збір 100 000 (вивід: `200000 !== 100000`) | BUG-4 |
+| `ai-runs/b1-from-code/tariff.test.js` › `fees are halved only when the reduced plan is chosen` | абонент з пільгою, обрано пільгу → збір 7 500 (вивід: `15000 !== 7500`) | BUG-4 |
+| `ai-runs/b1-from-code/day-cap.test.js` › `last and first millisecond of a UTC day fall on different days` | `dayKey("2026-01-15T23:59:59.999Z")` (01:59 16.01 за Києвом) → `2026-01-15` (вивід: `'2026-01-16'` замість `'2026-01-15'`) | BUG-5 |
+| `ai-runs/b1-from-code/day-cap.test.js` › `uses the UTC calendar day (not Kyiv local day)` | 00:30 16.01 за Києвом → доба `2026-01-15` (вивід: `'2026-01-16'` замість `'2026-01-15'`) | BUG-5 |
+| `ai-runs/b1-from-code/day-cap.test.js` › `the day boundary is midnight UTC (current behaviour)` | поїздка о 01:00 16.01 за Києвом записується на 15.01 (вивід: `10000 !== 15000`) | BUG-5 |
+| `ai-runs/b1-from-code/tariff.test.js` › `an after-midnight Kyiv ride is booked on the previous UTC day (current behaviour)` | нічна поїздка 16.01 обмежується залишком ліміту 15.01 (вивід: немає рядка `day-cap 1000`) | BUG-5 |
+
+Кожен із 5 дефектів зафіксовано щонайменше одним тестом з коду. Чотири з них AI сам позначив
+як «current behaviour» або «Characterises current behaviour» — тобто описав код, а не
+специфікацію.
 
 ## Числа
 
 - Дефектів, які знайшли тести з коду: 0
 - Дефектів, які знайшли тести зі специфікації: 5
-- Тестів з коду, що зафіксували дефект: _(після кроку 5)_
+- Тестів з коду, що зафіксували дефект: 11
