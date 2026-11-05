@@ -7,7 +7,7 @@
 | **Серйозність** | висока — кожен збір пільговика (і абонента з пільгою, коли обрано пільгу) недобирається вдвічі: −75 грн за T7, −1 000 грн за T8 |
 | **Частота** | завжди, коли застосовано пільговий тариф і є збір T7 або T8 |
 | **Знайдено** | `app/test/spec/t4-t5-subscription-reduced.test.js` › `T5, T7: TC-29 …`, `T5, T8: TC-30 …`; `app/test/spec/t9-amounts-receipt.test.js` › `T9: TC-50 …` (2 тести) (`ai-runs/b2-run.txt:51-52`, `:85-86`) |
-| **Виправлення** | `46b9918 fix(T5): reduced fare does not apply to fees` |
+| **Виправлення** | `4e91598 fix(T5): reduced fare does not apply to fees` |
 
 ## Кроки відтворення
 
