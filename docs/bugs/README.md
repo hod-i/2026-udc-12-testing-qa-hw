@@ -60,6 +60,33 @@ week of rides ends with the amount due` у `ai-runs/b2-run.txt` зелений, 
 | `app/test/unit/tariff.test.js` › `subscribers ride the first 45 minutes free` (після BUG-3; вивід `6400 !== 0`) | абонент, 40 хв → 0 і на класичному, і на електровелосипеді | `:74-77`: 45 безкоштовних хв — лише класичний; електровелосипед — 2 блоки 8 000 − 20 % → 6 400 | очікування за типом: classic 0, ebike 6 400; назва → `… free on a classic bike, an e-bike gets 20 % off` |
 | `app/test/unit/tariff.test.js` › `reduced fare for a ride returned outside the zone` (після BUG-4; вивід `17500 !== 10000`) | пільговий, 40 хв, X01 → `total 10000`, збір `7500` (збір зі знижкою 50 %) | `:86-87`: «Пільга не поширюється на збори (T7, T8)»; 5 000 − 50 % = 2 500 + збір 15 000 (`:112`) → 17 500 | очікування `total 17500`, збір `15000`; назву не змінено |
 
+## Інші змінені наявні тести (Task C, Task D)
+
+Зміни, не пов'язані з дефектами. Червоних тестів вони не лагодили: кожна посилює перевірку,
+що вже була, або прибирає з неї залежність від коду. Нові тести, що з'явилися в Task C,
+тут не перелічено — це доповнення, а не зміни (`docs/test-quality.md`, розд. 3). Входи
+змінених тестів лишилися ті самі, а нові очікування зі специфікації точніші за старі, тож
+жодна зміна не є послабленням.
+
+| Тест (файл › назва) | Що було | Що стало | Чому (специфікація) |
+|---|---|---|---|
+| `app/test/unit/day-cap.test.js` › `charges recorded for a day reduce what is left of the cap` | `assert.ok(remaining < DAY_CAP)` — пройде за будь-якого залишку, меншого за ліміт | `assert.equal(remaining, DAY_CAP - 12000)` — точний залишок (`ai-runs/c-strengthen.diff:9-10`) | T6 `:100-101`: ліміт 300 грн; 30 000 − 12 000 = 18 000. Очікування досі з константи `DAY_CAP`, але її значення окремо фіксує тест `the cap is 30 000 kopecks` (`docs/test-quality.md`, розд. 3, № 5) |
+| `app/test/unit/tariff.test.js` › `quote returns an itemised price` | `total >= 0`, `Array.isArray(...)`, `typeof minutes` — лише форма результату | `deepEqual` усього результату для 1, 50 і 130 хв (`c-strengthen.diff:83-106`) | T2 `:54` (1 хв → 0), T3 `:62-69` (50 хв → 5 000; ел., 130 хв → 5 блоків → 20 000) |
+| `app/test/unit/tariff.test.js` › `e-bikes are billed at the e-bike rate` | очікування `Math.ceil(minutes / BLOCK_MINUTES) * RATES.ebike` — з формули й констант коду (тавтологія) | `minutes 75`, `timeCharge 12000`, `total 12000` числами (`c-strengthen.diff:116-120`) | T3 `:67`, `:70`: ел., 75 хв → 3 блоки → 120 грн |
+| `app/test/unit/tariff.test.js` › `subscription on a long e-bike ride` | «є знижка `subscription`» і `total < timeCharge` — пройде за будь-якого відсотка | `timeCharge 16000`, знижка `subscription 3200`, `total 12800` (`c-strengthen.diff:131-135`) | T4 `:76`: ел., 100 хв → 4 блоки = 16 000 − 20 % → 12 800 |
+| `app/test/unit/tariff.test.js` › `reduced fare for a ride returned outside the zone` (вдруге — після BUG-4, див. вище) | `fees[0].amount === 15000` | `deepEqual` знижки `reduced 2500` і зборів `[out-of-zone 15000]` (`c-strengthen.diff:142-145`) | T5 `:86-87`, T7 `:112`: 5 000 − 50 % = 2 500; збір 15 000 без пільги |
+| `app/test/unit/tariff.test.js` › `night rides get 30 % off` | `discounts.length === 1`, `discounts[0].code === "night"`, `total < timeCharge` | знижка `night 750`, `total 1750` (`c-strengthen.diff:153-157`) | T10 `:141-143`: 25 грн − 30 % → 17,50 грн |
+| `app/test/unit/tariff.test.js` › `a bike kept over a day and left outside the zone pays both fees` | `fees.length === 2` — пройде і з двома однаковими чи неправильними зборами | `deepEqual(fees, [out-of-zone 15000, unreturned 200000])`, `total 245000` (`c-strengthen.diff:163-168`) | T7 `:112`, T8 `:119-122` (обидва збори), T6 `:100` (48 год → ліміт 30 000) |
+| `app/test/unit/tariff.test.js` › `the daily cap limits the time charge` | `last.total <= DAY_CAP` — лише остання поїздка й нерівність з константою коду | суми всіх трьох поїздок `[12000, 12000, 6000]`, рядок `day-cap 6000`, `chargedOn 30000` (`c-strengthen.diff:175-185`) | T6 `:105-106`: три поїздки ел. по 80 хв → 120, 120, **60** грн |
+| `app/test/unit/tariff.test.js` › `a 45-minute classic ride costs 50 UAH` | викликав власний `mock.fn` замість `quote()` — не перевіряв код узагалі | викликає справжній `quote()` (`c-strengthen.diff:190-194`) | T3 `:62`: 45 хв → 2 блоки → 50 грн |
+| `app/test/integration/receipt.test.js` › `every receipt of a week of rides ends with the amount due` (Task D) | 10 випадкових поїздок, очікування за формулою `floor(m/30)+1`; падав 6 з 30 прогонів | таблиця з 12 явних поїздок, кожна — окремий `test()`, з межами 29/30/31 і 59/60/61 хв; перевіряється весь рядок «До сплати» | T3 `:62`: розпочаті 30 хв → `⌈m/30⌉` блоків. Причина й докази — `docs/triage.md`, розд. 1 |
+
+Тести `a ride of 30 min 20 s …` і `subscribers ride …` змінено лише в Task B (таблиця вище);
+у Task C агент їх не чіпав. Без жодних змін лишилися: `tariff.test.js` › `a return before the
+pickup is rejected`, `day-cap.test.js` › `the day of a ride is the date of its pickup`, усі тести
+`app/test/unit/server.test.js` і `app/test/unit/receipt-format.test.js`,
+`app/test/integration/receipt.test.js` › `a receipt lists the fee for a return outside the zone`.
+
 ## Тести з коду після виправлення (`ai-runs/b1-rerun.txt`)
 
 `ai-runs/b1-run.txt` (до виправлень): 90 з 90 зелені. `ai-runs/b1-rerun.txt` (після
